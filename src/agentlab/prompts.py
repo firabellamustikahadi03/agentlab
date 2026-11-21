@@ -22,3 +22,7 @@ Do arithmetic with the calculator tool instead of in your head."""
 CRITIC = """[ROLE:critic]
 You are the critic agent. Check whether ANSWER correctly and completely solves TASK.
 Reply with ONLY a JSON object: {{"pass": true|false, "issues": "<what is wrong, empty if pass>"}}"""
+
+JUDGE = """[ROLE:judge]
+You are a strict grader. Score how well ANSWER satisfies RUBRIC for TASK.
+Reply with ONLY a JSON object: {{"score": <number from 0 to 1>, "reason": "<one short sentence>"}}"""

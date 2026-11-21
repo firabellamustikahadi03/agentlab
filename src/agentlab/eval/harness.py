@@ -95,9 +95,12 @@ class EvalReport:
 
 
 class EvalHarness:
-    def __init__(self, store: SqliteStore | None = None, tools: ToolRegistry | None = None):
+    def __init__(
+        self, store: SqliteStore | None = None, tools: ToolRegistry | None = None, judge: Provider | None = None
+    ):
         self.store = store or SqliteStore(":memory:")
         self.tools = tools or default_registry()
+        self.judge = judge  # provider used by {"type": "judge"} checks
 
     def run(
         self,
@@ -112,12 +115,11 @@ class EvalHarness:
         for cfg in configs:
             for task in tasks:
                 for trial in range(trials):
-                    rt = AgentRuntime(
-                        cfg.make_provider(), self.tools, self.store, cfg.budget, use_critic=cfg.use_critic
-                    )
+                    tools = task.tools() if task.tools else self.tools  # fresh per run: tools may be stateful
+                    rt = AgentRuntime(cfg.make_provider(), tools, self.store, cfg.budget, use_critic=cfg.use_critic)
                     res = rt.run(task.prompt)
                     spans = self.store.get_spans(res.run_id)
-                    passed, sc, detail = score(task.checks, res.answer, spans)
+                    passed, sc, detail = score(task.checks, res.answer, spans, self.judge, task.prompt)
                     if res.status in ("failed", "budget_exceeded"):
                         passed, sc = False, 0.0
                         detail = f"{res.status}: {res.error}; " + detail
