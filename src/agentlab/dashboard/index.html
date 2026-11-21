@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentLab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M8 22l6-12 4 8 2-4 4 8' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6f6d67;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10); --wash: rgba(11,11,11,.045);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s7: #4a3aa7; --s8: #e34948;
+  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --crit: #d03b3b;
+  --good-ink: #006300; --neutral: #898781;
+  --h0: #cde2fb; --h1: #b7d3f6; --h2: #9ec5f4; --h3: #6da7ec; --h4: #3987e5; --h5: #1c5cab; --h6: #104281;
+  --heat-lo-fg: #0b0b0b; --heat-hi-fg: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #a09e96;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10); --wash: rgba(255,255,255,.06);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s7: #9085e9; --s8: #e66767;
+    --good-ink: #0ca30c;
+    --h0: #104281; --h1: #1c5cab; --h2: #256abf; --h3: #3987e5; --h4: #6da7ec; --h5: #9ec5f4; --h6: #cde2fb;
+    --heat-lo-fg: #ffffff; --heat-hi-fg: #0b0b0b;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #a09e96;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10); --wash: rgba(255,255,255,.06);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s7: #9085e9; --s8: #e66767;
+  --good-ink: #0ca30c;
+  --h0: #104281; --h1: #1c5cab; --h2: #256abf; --h3: #3987e5; --h4: #6da7ec; --h5: #9ec5f4; --h6: #cde2fb;
+  --heat-lo-fg: #ffffff; --heat-hi-fg: #0b0b0b;
+}
+* { box-sizing: border-box; }
+html { background: var(--page); }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: inherit; }
+header.top { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--border); }
+.bar { max-width: 1180px; margin: 0 auto; padding: 0 16px; height: 52px; display: flex; align-items: center; gap: 20px; }
+.brand { font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.brand i { width: 18px; height: 18px; border-radius: 5px; background: var(--s1); display: inline-block; }
+nav { display: flex; gap: 4px; flex: 1; }
+nav a { padding: 6px 12px; border-radius: 8px; text-decoration: none; color: var(--ink-2); font-weight: 500; }
+nav a:hover { background: var(--wash); }
+nav a[aria-current="page"] { color: var(--ink); background: var(--wash); }
+button, select, input { font: inherit; color: var(--ink); }
+.btn { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+.btn:hover { background: var(--wash); }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.015em; }
+h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: -.005em; }
+.sub { color: var(--ink-2); margin: 0 0 20px; }
+.muted { color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+.tile .l { color: var(--ink-2); font-size: 12.5px; }
+.tile .v { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px; }
+.tile .d { color: var(--muted); font-size: 12px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.filters input, .filters select { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.filters input { min-width: 240px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr.link { cursor: pointer; }
+tbody tr.link:hover { background: var(--wash); }
+tr:last-child td { border-bottom: 0; }
+.scroll { overflow-x: auto; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }
+.badge svg { width: 14px; height: 14px; flex: none; }
+.clip { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+code, pre { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: var(--wash); border-radius: 8px; padding: 10px; max-height: 260px; overflow: auto; }
+.row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.empty { padding: 28px; text-align: center; color: var(--muted); }
+
+/* legend + keys */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2); font-size: 12.5px; margin: 0 0 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+
+/* horizontal bars: <=24px, 4px rounded data end, square baseline, value at the tip */
+.hbars { display: grid; gap: 8px; }
+.hb { display: grid; grid-template-columns: minmax(80px, 170px) 1fr; gap: 12px; align-items: center; }
+.hb .lab { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb .track { display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--axis); padding: 2px 0; }
+.hb .bar1 { display: flex; align-items: center; gap: 8px; height: 16px; }
+.hb .fill { height: 16px; border-radius: 0 4px 4px 0; min-width: 2px; }
+.hb .val { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.hb .fill:hover { filter: brightness(1.12); }
+
+/* heatmap */
+.heat { display: grid; gap: 2px; }
+.heat .c { padding: 7px 8px; border-radius: 4px; text-align: center; font-variant-numeric: tabular-nums; font-size: 12.5px; min-width: 0; }
+.heat .hd { color: var(--muted); font-size: 12px; padding: 4px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+.heat .rl { color: var(--ink-2); font-size: 12.5px; padding: 7px 8px 7px 0; white-space: nowrap; }
+.h0 { background: var(--h0); } .h1 { background: var(--h1); } .h2 { background: var(--h2); } .h3 { background: var(--h3); }
+.h4 { background: var(--h4); } .h5 { background: var(--h5); } .h6 { background: var(--h6); }
+.h0, .h1, .h2 { color: var(--heat-lo-fg); } .h3, .h4, .h5, .h6 { color: var(--heat-hi-fg); }
+.scale { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; margin-top: 10px; }
+.scale .ramp { display: flex; gap: 2px; } .scale .ramp i { width: 22px; height: 10px; border-radius: 2px; display: block; }
+
+/* timeline */
+.tl { display: grid; grid-template-columns: minmax(180px, 34%) 1fr; font-size: 12.5px; }
+.tl .name { padding: 3px 8px 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.tl .lane { position: relative; height: 24px; border-bottom: 1px solid var(--grid); cursor: pointer; }
+.tl .name { border-bottom: 1px solid var(--grid); height: 24px; }
+.tl .name:hover, .tl .name.sel { background: var(--wash); }
+.tl .lane .b { position: absolute; top: 6px; height: 12px; min-width: 3px; border-radius: 3px; }
+.tl .lane.sel { background: var(--wash); }
+.tl .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+.axis { display: grid; grid-template-columns: minmax(180px, 34%) 1fr; color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }
+.axis .ticks { position: relative; height: 16px; }
+.axis .ticks span { position: absolute; transform: translateX(-50%); }
+.axis .ticks span:first-child { transform: none; } .axis .ticks span:last-child { transform: translateX(-100%); }
+.detail { display: grid; gap: 10px; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; word-break: break-word; }
+
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 6px 20px rgba(0,0,0,.18); max-width: 320px; display: none; }
+#tip b { font-weight: 600; }
+.delta-up { color: var(--good-ink); } .delta-down { color: var(--crit); }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; white-space: nowrap; }
+.view-toggle { float: right; }
+@media (max-width: 640px) { .tl, .axis { grid-template-columns: 120px 1fr; } .hb { grid-template-columns: 90px 1fr; } .filters input { min-width: 0; flex: 1; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="bar">
+  <a class="brand" href="#/"><i></i>AgentLab</a>
+  <nav id="nav">
+    <a href="#/" data-k="runs">Runs</a>
+    <a href="#/evals" data-k="evals">Evals</a>
+    <a href="#/compare" data-k="compare">Compare</a>
+  </nav>
+  <button class="btn" id="theme" aria-label="Toggle light and dark theme">Theme</button>
+</div></header>
+<main id="app"></main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = {
+  int: (n) => Math.round(n || 0).toLocaleString("en-US"),
+  pct: (x) => `${Math.round((x || 0) * 100)}%`,
+  usd: (x) => (x || 0) === 0 ? "$0" : x < 0.01 ? `$${x.toFixed(5)}` : `$${x.toFixed(3)}`,
+  sec: (x) => x >= 10 ? `${x.toFixed(1)}s` : x >= 1 ? `${x.toFixed(2)}s` : `${Math.round((x || 0) * 1000)}ms`,
+  ms: (x) => x >= 1000 ? `${(x / 1000).toFixed(2)}s` : `${x < 10 ? x.toFixed(1) : Math.round(x)}ms`,
+  when: (t) => t ? new Date(t * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-",
+  compact: (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : fmt.int(n),
+};
+async function api(path) {
+  const r = await fetch(path);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+  return body;
+}
+function store(key, val) { try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) { return null; } }
+
+/* ---------- theme ---------- */
+(function theme() {
+  const q = new URLSearchParams(location.search).get("theme");
+  const saved = q || store("agentlab-theme");
+  if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+  $("#theme").onclick = () => {
+    const dark = getComputedStyle(document.documentElement).colorScheme === "dark";
+    const next = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = next; store("agentlab-theme", next);
+  };
+})();
+
+/* ---------- tooltip (one shared element; all content escaped by callers) ---------- */
+const tip = $("#tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + "px";
+  tip.style.top = Math.min(e.clientY + 14, innerHeight - h - 8) + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+function hover(el, html) {
+  el.addEventListener("mousemove", (e) => showTip(e, html));
+  el.addEventListener("mouseleave", hideTip);
+  el.addEventListener("focus", () => { const r = el.getBoundingClientRect(); showTip({ clientX: r.left, clientY: r.bottom }, html); });
+  el.addEventListener("blur", hideTip);
+}
+
+/* ---------- small components ---------- */
+const ICON = {
+  ok: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--good)"/><path d="M4.6 8.2l2.3 2.3 4.4-4.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bad: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--crit)"/><path d="M5.3 5.3l5.4 5.4M10.7 5.3l-5.4 5.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  warn: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l7 12.5H1z" fill="var(--warn)"/><path d="M8 6v4M8 11.6v.4" stroke="#0b0b0b" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  run: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="var(--s1)" stroke-width="2" stroke-dasharray="20 18"/></svg>',
+};
+const STATUS = {
+  success: ["ok", "success"], ok: ["ok", "ok"], unverified: ["warn", "unverified"], budget_exceeded: ["warn", "budget exceeded"],
+  failed: ["bad", "failed"], error: ["bad", "error"], running: ["run", "running"],
+};
+function badge(status) {
+  const [icon, label] = STATUS[status] || ["warn", status || "unknown"];
+  return `<span class="badge">${ICON[icon]}${esc(label)}</span>`;
+}
+function tile(label, value, sub) {
+  return `<div class="tile"><div class="l">${esc(label)}</div><div class="v">${esc(value)}</div>${sub ? `<div class="d">${esc(sub)}</div>` : ""}</div>`;
+}
+/* horizontal bar chart. series: [{name,color}], items: [{label, values:[v..], tips:[html..]}] */
+function hbars(items, series, { max, format }) {
+  const m = max || Math.max(...items.flatMap((i) => i.values), 1e-9);
+  const legend = series.length > 1
+    ? `<div class="legend">${series.map((s) => `<span><i class="key" style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>` : "";
+  const rows = items.map((it, ri) => `<div class="hb"><div class="lab" title="${esc(it.label)}">${esc(it.label)}</div><div class="track">${
+    it.values.map((v, si) => `<div class="bar1"><div class="fill" tabindex="0" data-r="${ri}" data-s="${si}" style="width:${Math.max(0, v / m * 78)}%;background:${series[si].color}"></div><span class="val">${esc(format(v))}</span></div>`).join("")
+  }</div></div>`).join("");
+  return { html: `${legend}<div class="hbars">${rows}</div>`, bind(root) {
+    root.querySelectorAll(".fill").forEach((el) => hover(el, items[+el.dataset.r].tips[+el.dataset.s]));
+  } };
+}
+function heat(rowLabels, colLabels, cell) { /* cell(r,c) -> {rate, text, tip} | null */
+  const cols = colLabels.length;
+  let html = `<div class="heat" style="grid-template-columns:minmax(70px,auto) repeat(${cols}, minmax(54px, 1fr))"><div></div>`;
+  html += colLabels.map((c) => `<div class="hd" title="${esc(c)}">${esc(c)}</div>`).join("");
+  const tips = [];
+  rowLabels.forEach((r, ri) => {
+    html += `<div class="rl">${esc(r)}</div>`;
+    colLabels.forEach((c, ci) => {
+      const d = cell(r, c);
+      if (!d) { html += `<div class="c muted">-</div>`; return; }
+      tips.push(d.tip);
+      html += `<div class="c h${Math.round(d.rate * 6)}" tabindex="0" data-t="${tips.length - 1}">${esc(d.text)}</div>`;
+    });
+  });
+  html += `</div><div class="scale"><span>0%</span><span class="ramp">${[0, 1, 2, 3, 4, 5, 6].map((i) => `<i class="h${i}"></i>`).join("")}</span><span>100% passed</span></div>`;
+  return { html, bind(root) { root.querySelectorAll(".heat .c[data-t]").forEach((el) => hover(el, tips[+el.dataset.t])); } };
+}
+function table(cols, rows, { link } = {}) {
+  const head = cols.map((c) => `<th class="${c.num ? "num" : ""}">${esc(c.h)}</th>`).join("");
+  const body = rows.map((r) => `<tr class="${link ? "link" : ""}" ${link ? `data-href="${esc(link(r))}" tabindex="0"` : ""}>${cols.map((c) => `<td class="${c.num ? "num" : ""}">${c.f(r)}</td>`).join("")}</tr>`).join("");
+  return `<div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function wireLinks(root) {
+  root.querySelectorAll("tr.link").forEach((tr) => {
+    const go = () => { location.hash = tr.dataset.href; };
+    tr.addEventListener("click", go);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  });
+}
+const KIND_COLOR = { run: "var(--neutral)", plan: "var(--s1)", step: "var(--s7)", llm: "var(--s2)", tool: "var(--s3)", critic: "var(--s5)" };
+
+/* ---------- views ---------- */
+async function viewRuns(app) {
+  const runs = await api("/api/runs?limit=300");
+  const m = (r) => r.meta || {};
+  const done = runs.filter((r) => r.status && r.status !== "running");
+  const okN = runs.filter((r) => r.status === "success").length;
+  const tokens = runs.reduce((a, r) => a + (m(r).tokens || 0), 0);
+  const cost = runs.reduce((a, r) => a + (m(r).cost_usd || 0), 0);
+  app.innerHTML = `<h1>Runs</h1><p class="sub">Every agent run, newest first. Click a run to see its trace.</p>
+    <div class="tiles">${tile("Runs", fmt.int(runs.length))}${tile("Finished OK", done.length ? fmt.pct(okN / done.length) : "-", `${okN} of ${done.length} runs (not answer accuracy)`)}${tile("Tokens", fmt.compact(tokens))}${tile("Cost", fmt.usd(cost), "all runs")}</div>
+    <div class="card"><div class="filters"><input id="q" type="search" placeholder="Filter by task, model or id" aria-label="Filter runs"><select id="st" aria-label="Status"><option value="">All statuses</option>${[...new Set(runs.map((r) => r.status))].filter(Boolean).map((s) => `<option>${esc(s)}</option>`).join("")}</select></div><div id="tbl"></div></div>`;
+  const draw = () => {
+    const q = $("#q").value.toLowerCase(), st = $("#st").value;
+    const rows = runs.filter((r) => (!st || r.status === st) && (!q || `${r.task} ${r.model} ${r.provider} ${r.run_id}`.toLowerCase().includes(q)));
+    $("#tbl").innerHTML = rows.length ? table([
+      { h: "Status", f: (r) => badge(r.status) },
+      { h: "Task", f: (r) => `<div class="clip" title="${esc(r.task)}">${esc(r.task)}</div>` },
+      { h: "Model", f: (r) => `<span class="muted">${esc(r.provider)}/${esc(r.model)}</span>` },
+      { h: "Tokens", num: 1, f: (r) => fmt.int(m(r).tokens) },
+      { h: "Latency", num: 1, f: (r) => fmt.sec(m(r).latency_s) },
+      { h: "Cost", num: 1, f: (r) => fmt.usd(m(r).cost_usd) },
+      { h: "Started", f: (r) => `<span class="muted">${esc(fmt.when(r.started))}</span>` },
+    ], rows, { link: (r) => `#/run/${r.run_id}` }) : `<div class="empty">No runs match. Try <code>agentlab run "What is 6*7?"</code> or <code>agentlab demo</code>.</div>`;
+    wireLinks($("#tbl"));
+  };
+  $("#q").oninput = draw; $("#st").onchange = draw; draw();
+}
+
+async function viewRun(app, id) {
+  const { run, spans } = await api(`/api/runs/${encodeURIComponent(id)}`);
+  const m = run.meta || {};
+  const t0 = Math.min(...spans.map((s) => s.started)), t1 = Math.max(...spans.map((s) => s.ended || s.started));
+  const total = Math.max(t1 - t0, 1e-6);
+  const kids = {}; spans.forEach((s) => (kids[s.parent_id || ""] ||= []).push(s));
+  const order = [];
+  (function walk(pid, depth) { (kids[pid] || []).sort((a, b) => a.seq - b.seq).forEach((s) => { order.push([s, depth]); walk(s.span_id, depth + 1); }); })("", 0);
+  const used = [...new Set(spans.map((s) => s.kind))];
+  const errs = spans.filter((s) => s.status === "error").length;
+  app.innerHTML = `<p class="muted" style="margin:0 0 8px"><a href="#/">Runs</a> / ${esc(run.run_id)}</p>
+    <h1>${esc(run.task)}</h1><p class="sub">${badge(run.status)} &nbsp; <span class="muted">${esc(run.provider)}/${esc(run.model)} · ${esc(fmt.when(run.started))}</span></p>
+    <div class="tiles">${tile("Latency", fmt.sec(m.latency_s ?? total))}${tile("Tokens", fmt.int(m.tokens))}${tile("Cost", fmt.usd(m.cost_usd))}${tile("LLM calls", fmt.int(m.llm_calls))}${tile("Tool calls", fmt.int(m.tool_calls), `${m.tool_errors || 0} errors`)}${tile("Replans", fmt.int(m.replans), errs ? `${errs} failed spans` : "")}</div>
+    <div class="row2" style="grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr)">
+      <div class="card"><h2>Trace timeline</h2>
+        <div class="legend">${used.map((k) => `<span><i class="key" style="background:${KIND_COLOR[k] || "var(--neutral)"}"></i>${esc(k)}</span>`).join("")}</div>
+        <div class="axis"><div></div><div class="ticks">${[0, 25, 50, 75, 100].map((p) => `<span style="left:${p}%">${esc(fmt.ms(total * 1000 * p / 100))}</span>`).join("")}</div></div>
+        <div class="tl" id="tl">${order.map(([s, d], i) => {
+          const left = (s.started - t0) / total * 100, w = Math.max(((s.ended || s.started) - s.started) / total * 100, 0.4);
+          const bad = s.status === "error";
+          return `<div class="name" data-i="${i}" tabindex="0" style="padding-left:${d * 14}px" title="${esc(s.kind)}: ${esc(s.name)}"><i class="key" style="background:${KIND_COLOR[s.kind] || "var(--neutral)"}"></i>${bad ? ICON.bad : ""}<span class="clip">${esc(s.name)}</span></div>
+          <div class="lane" data-i="${i}">${[25, 50, 75].map((p) => `<span class="grid" style="left:${p}%"></span>`).join("")}<span class="b" style="left:${left}%;width:${w}%;background:${KIND_COLOR[s.kind] || "var(--neutral)"}"></span></div>`;
+        }).join("")}</div>
+      </div>
+      <div class="card" id="detail"><h2>Span detail</h2><div class="muted">Select a span in the timeline.</div></div>
+    </div>`;
+  const j = (v) => { const t = JSON.stringify(v, null, 2) ?? ""; return esc(t.length > 4000 ? t.slice(0, 4000) + "\n... (truncated)" : t); };
+  const select = (i) => {
+    const [s] = order[i];
+    document.querySelectorAll("#tl .sel").forEach((e) => e.classList.remove("sel"));
+    document.querySelectorAll(`#tl [data-i="${i}"]`).forEach((e) => e.classList.add("sel"));
+    const a = s.attrs || {};
+    $("#detail").innerHTML = `<h2>${esc(s.kind)}: ${esc(s.name)}</h2><div class="detail">
+      <dl class="kv"><dt>Status</dt><dd>${badge(s.status)}</dd><dt>Duration</dt><dd>${esc(fmt.ms(((s.ended || s.started) - s.started) * 1000))}</dd>
+      ${a.prompt_tokens != null ? `<dt>Tokens</dt><dd>${fmt.int(a.prompt_tokens)} in / ${fmt.int(a.completion_tokens)} out</dd>` : ""}
+      ${a.cost_usd ? `<dt>Cost</dt><dd>${esc(fmt.usd(a.cost_usd))}</dd>` : ""}${a.model ? `<dt>Model</dt><dd>${esc(a.model)}</dd>` : ""}</dl>
+      <div><div class="muted">Input</div><pre>${j(s.input)}</pre></div><div><div class="muted">Output</div><pre>${j(s.output)}</pre></div></div>`;
+  };
+  document.querySelectorAll("#tl [data-i]").forEach((e) => {
+    e.addEventListener("click", () => select(+e.dataset.i));
+    e.addEventListener("keydown", (ev) => { if (ev.key === "Enter") select(+e.dataset.i); });
+  });
+  const firstBad = order.findIndex(([s]) => s.status === "error");
+  if (order.length) select(firstBad >= 0 ? firstBad : order.findIndex(([s]) => s.kind === "llm") >= 0 ? order.findIndex(([s]) => s.kind === "llm") : 0);
+  document.querySelectorAll("#tl .lane").forEach((el) => {
+    const [s] = order[+el.dataset.i];
+    hover(el, `<b>${esc(s.kind)}: ${esc(s.name)}</b><br>${esc(fmt.ms(((s.ended || s.started) - s.started) * 1000))} · ${esc(s.status)}`);
+  });
+}
+
+async function viewEvals(app) {
+  const evals = await api("/api/evals");
+  app.innerHTML = `<h1>Evals</h1><p class="sub">Saved evaluation runs. Open one for charts, or pick two on the Compare tab.</p>
+    <div class="card">${evals.length ? table([
+      { h: "Eval", f: (e) => `<code>${esc(e.eval_id)}</code>` },
+      { h: "Suite", f: (e) => esc(e.suite || "-") },
+      { h: "Configs", f: (e) => `<div class="clip muted">${esc((e.meta.configs || []).join(", "))}</div>` },
+      { h: "Runs", num: 1, f: (e) => fmt.int(e.n) },
+      { h: "Success", num: 1, f: (e) => e.success == null ? "-" : fmt.pct(e.success) },
+      { h: "Created", f: (e) => `<span class="muted">${esc(fmt.when(e.created))}</span>` },
+    ], evals, { link: (e) => `#/eval/${e.eval_id}` }) : `<div class="empty">No evals yet. Run <code>agentlab eval --suite all</code> or <code>agentlab demo</code>.</div>`}</div>`;
+  wireLinks(app);
+}
+
+function chartCard(title, sub, build) {
+  const c = build();
+  return { html: `<div class="card"><h2>${esc(title)}</h2>${sub ? `<p class="muted" style="margin:-8px 0 12px">${esc(sub)}</p>` : ""}<div class="chart">${c.html}</div></div>`, bind: c.bind };
+}
+
+async function viewEval(app, id) {
+  const d = await api(`/api/evals/${encodeURIComponent(id)}`);
+  const cfgs = d.configs, S = d.summary;
+  const best = [...cfgs].sort((a, b) => S[b].success_rate - S[a].success_rate)[0];
+  const single = (name, color = "var(--s1)") => [{ name, color }];
+  const bars = (key, fmtFn, label, extraTip) => chartCard(label, "", () => hbars(
+    cfgs.map((c) => ({ label: c, values: [S[c][key]], tips: [`<b>${esc(c)}</b><br>${esc(label)}: ${esc(fmtFn(S[c][key]))}${extraTip ? "<br>" + extraTip(S[c]) : ""}`] })),
+    single(label), { max: key === "success_rate" ? 1 : undefined, format: fmtFn }));
+  const charts = [
+    bars("success_rate", fmt.pct, "Success rate", (s) => `${esc(s.runs)} runs`),
+    bars("avg_cost_usd", fmt.usd, "Cost per run"),
+    bars("avg_latency_s", fmt.sec, "Latency per run"),
+    bars("avg_tokens", fmt.compact, "Tokens per run"),
+  ];
+  const tasks = Object.keys(d.task_matrix);
+  const hm = heat(tasks, cfgs, (t, c) => {
+    const m = d.task_metrics[t][c]; if (!m) return null;
+    return { rate: m.pass_rate, text: d.task_matrix[t][c], tip: `<b>${esc(t)}</b> on ${esc(c)}<br>passed ${esc(d.task_matrix[t][c])} (${esc(fmt.pct(m.pass_rate))})<br>${esc(fmt.compact(m.tokens))} tokens · ${esc(fmt.sec(m.latency_s))} · ${esc(fmt.usd(m.cost_usd))}` };
+  });
+  const failures = d.rows.filter((r) => !r.passed);
+  app.innerHTML = `<p class="muted" style="margin:0 0 8px"><a href="#/evals">Evals</a> / ${esc(d.eval.eval_id)}</p>
+    <h1>Eval ${esc(d.eval.eval_id)}</h1><p class="sub">Suite <b>${esc(d.eval.suite || "-")}</b> · ${esc(fmt.int(d.rows.length))} runs · ${esc(fmt.when(d.eval.created))} · <a href="#/compare/${esc(d.eval.eval_id)}/">compare with another eval</a></p>
+    <div class="tiles">${tile("Best config", best, `${fmt.pct(S[best].success_rate)} success`)}${tile("Configs", cfgs.length)}${tile("Failures", fmt.int(failures.length), `of ${d.rows.length} runs`)}${tile("Total cost", fmt.usd(cfgs.reduce((a, c) => a + S[c].total_cost_usd, 0)))}</div>
+    <div class="row2">${charts.map((c, i) => `<div id="c${i}">${c.html}</div>`).join("")}</div>
+    <div class="card"><h2>Per task pass rate</h2><div id="hm">${hm.html}</div></div>
+    <div class="card"><h2>Summary table</h2>${table([
+      { h: "Config", f: (c) => esc(c) }, { h: "Runs", num: 1, f: (c) => fmt.int(S[c].runs) }, { h: "Success", num: 1, f: (c) => fmt.pct(S[c].success_rate) },
+      { h: "Tokens", num: 1, f: (c) => fmt.int(S[c].avg_tokens) }, { h: "Latency", num: 1, f: (c) => fmt.sec(S[c].avg_latency_s) },
+      { h: "Cost/run", num: 1, f: (c) => fmt.usd(S[c].avg_cost_usd) }, { h: "LLM calls", num: 1, f: (c) => S[c].avg_llm_calls.toFixed(1) },
+      { h: "Tool errors", num: 1, f: (c) => fmt.pct(S[c].tool_error_rate) }, { h: "Replans", num: 1, f: (c) => fmt.pct(S[c].replan_rate) },
+    ], cfgs)}</div>
+    <div class="card"><h2>Failed runs</h2>${failures.length ? table([
+      { h: "Status", f: (r) => badge(r.status === "success" ? "failed" : r.status) }, { h: "Config", f: (r) => esc(r.config) }, { h: "Task", f: (r) => esc(r.task_id) },
+      { h: "Why", f: (r) => `<div class="clip" title="${esc(r.detail)}">${esc(r.detail)}</div>` },
+    ], failures.slice(0, 60), { link: (r) => `#/run/${r.run_id}` }) : `<div class="empty">Every run passed.</div>`}</div>`;
+  charts.forEach((c, i) => c.bind($(`#c${i}`)));
+  hm.bind($("#hm")); wireLinks(app);
+}
+
+async function viewCompare(app, a, b) {
+  const evals = await api("/api/evals");
+  const opt = (sel) => `<option value="">Choose an eval</option>${evals.map((e) => `<option value="${esc(e.eval_id)}" ${e.eval_id === sel ? "selected" : ""}>${esc(e.eval_id)} · ${esc(e.suite || "-")} · ${esc(fmt.when(e.created))}</option>`).join("")}`;
+  app.innerHTML = `<h1>Compare evals</h1><p class="sub">Pick a baseline (A) and a candidate (B). Configs are matched by name.</p>
+    <div class="card"><div class="filters"><label>A (baseline) <select id="ca">${opt(a)}</select></label><label>B (candidate) <select id="cb">${opt(b)}</select></label></div></div><div id="cmp"></div>`;
+  const go = () => { const x = $("#ca").value, y = $("#cb").value; location.hash = `#/compare/${x}/${y}`; };
+  $("#ca").onchange = go; $("#cb").onchange = go;
+  if (!a || !b) { $("#cmp").innerHTML = `<div class="card"><div class="empty">Select two evals to see what changed.</div></div>`; return; }
+  const c = await api(`/api/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+  const names = Object.keys(c.configs);
+  const tipFor = (n, k, f) => { const [x, y, dl] = c.configs[n][k]; return `<b>${esc(n)}</b><br>A: ${esc(f(x))}<br>B: ${esc(f(y))}<br>change: ${esc(dl >= 0 ? "+" : "")}${esc(f(dl))}`; };
+  const series = [{ name: `A ${a}`, color: "var(--s1)" }, { name: `B ${b}`, color: "var(--s2)" }];
+  const sr = names.length ? hbars(names.map((n) => ({ label: n, values: c.configs[n].success_rate.slice(0, 2), tips: [tipFor(n, "success_rate", fmt.pct), tipFor(n, "success_rate", fmt.pct)] })), series, { max: 1, format: fmt.pct }) : null;
+  const sign = (v, f, goodUp) => { if (Math.abs(v) < 1e-12) return `<span class="muted">no change</span>`; const good = (v > 0) === goodUp; return `<span class="${good ? "delta-up" : "delta-down"}">${v > 0 ? "▲" : "▼"} ${esc(f(Math.abs(v)))} ${good ? "better" : "worse"}</span>`; };
+  const changed = c.tasks.filter((t) => t.change !== "same");
+  const regs = c.regressions;
+  $("#cmp").innerHTML = `<div class="tiles">${tile("Configs compared", names.length)}${tile("Regressions", regs.length, regs.length ? "success dropped" : "none")}${tile("Tasks changed", changed.length, `${changed.filter((t) => t.change === "improved").length} improved`)}</div>
+    ${sr ? `<div class="card"><h2>Success rate by config</h2><div id="srx">${sr.html}</div></div>` : ""}
+    <div class="card"><h2>Per config changes</h2>${names.length ? table([
+      { h: "Config", f: (n) => esc(n) },
+      { h: "Success", num: 1, f: (n) => `${esc(fmt.pct(c.configs[n].success_rate[0]))} → ${esc(fmt.pct(c.configs[n].success_rate[1]))} ${sign(c.configs[n].success_rate[2], (v) => `${(v * 100).toFixed(0)}pp`, true)}` },
+      { h: "Tokens", num: 1, f: (n) => `${esc(fmt.int(c.configs[n].avg_tokens[0]))} → ${esc(fmt.int(c.configs[n].avg_tokens[1]))}` },
+      { h: "Latency", num: 1, f: (n) => `${esc(fmt.sec(c.configs[n].avg_latency_s[0]))} → ${esc(fmt.sec(c.configs[n].avg_latency_s[1]))}` },
+      { h: "Cost/run", num: 1, f: (n) => `${esc(fmt.usd(c.configs[n].avg_cost_usd[0]))} → ${esc(fmt.usd(c.configs[n].avg_cost_usd[1]))}` },
+    ], names) : `<div class="empty">No configs with the same name in both evals.</div>`}
+    ${c.only_in_a.length ? `<p class="muted">Only in A: ${esc(c.only_in_a.join(", "))}</p>` : ""}${c.only_in_b.length ? `<p class="muted">Only in B: ${esc(c.only_in_b.join(", "))}</p>` : ""}</div>
+    <div class="card"><h2>Tasks that changed</h2>${changed.length ? table([
+      { h: "Task", f: (t) => esc(t.task) }, { h: "Config", f: (t) => esc(t.config) },
+      { h: "A", num: 1, f: (t) => esc(fmt.pct(t.a)) }, { h: "B", num: 1, f: (t) => esc(fmt.pct(t.b)) },
+      { h: "Change", f: (t) => t.change === "regressed" ? `<span class="badge">${ICON.bad}regressed</span>` : `<span class="badge">${ICON.ok}improved</span>` },
+    ], changed) : `<div class="empty">No per-task differences.</div>`}</div>`;
+  if (sr) sr.bind($("#srx"));
+}
+
+/* ---------- router ---------- */
+async function render() {
+  const app = $("#app"); hideTip();
+  const [, view = "", p1 = "", p2 = ""] = location.hash.replace(/^#/, "").split("/").map(decodeURIComponent);
+  const key = view === "run" ? "runs" : view === "eval" ? "evals" : view || "runs";
+  document.querySelectorAll("#nav a").forEach((a) => (a.dataset.k === (key === "" ? "runs" : key) ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  try {
+    if (view === "run" && p1) await viewRun(app, p1);
+    else if (view === "evals") await viewEvals(app);
+    else if (view === "eval" && p1) await viewEval(app, p1);
+    else if (view === "compare") await viewCompare(app, p1, p2);
+    else await viewRuns(app);
+  } catch (e) {
+    app.innerHTML = `<div class="card"><h2>Something went wrong</h2><p class="muted">${esc(e.message)}</p><p><a href="#/">Back to runs</a></p></div>`;
+  }
+}
+addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>

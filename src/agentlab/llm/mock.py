@@ -126,8 +126,12 @@ class MockAgentProvider:
         fail_first: bool = False,
         gullible: bool = False,
         retries: bool = True,
+        delay_s: float = 0.001,
+        price_per_mtok: tuple[float, float] = (0.0, 0.0),
     ):
         self.name, self.model = name, model
+        self.delay_s = delay_s  # simulated model latency (the demo raises it to make timelines readable)
+        self.price = price_per_mtok  # (input, output) USD per 1M tokens, to give demo runs a cost
         self.fail_first = fail_first
         self.gullible = gullible
         self.retries = retries
@@ -146,12 +150,14 @@ class MockAgentProvider:
         else:
             out = self._execute(messages)
         text = json.dumps(out)
-        time.sleep(0.001)
+        time.sleep(self.delay_s)
+        usage = Usage(sum(estimate_tokens(m.content) for m in messages), estimate_tokens(text))
         return LLMResponse(
             content=text,
-            usage=Usage(sum(estimate_tokens(m.content) for m in messages), estimate_tokens(text)),
+            usage=usage,
             latency_ms=(time.perf_counter() - t0) * 1000,
             model=self.model,
+            cost_usd=(usage.prompt_tokens * self.price[0] + usage.completion_tokens * self.price[1]) / 1e6,
         )
 
     @staticmethod

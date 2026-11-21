@@ -1,10 +1,12 @@
-"""agentlab CLI: run | resume | eval | eval-list | eval-compare | traces list|show|replay"""
+"""agentlab CLI: run | resume | eval | eval-list | eval-compare | traces list|show|replay | serve | demo"""
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
+import webbrowser
 
 from .eval import EvalConfig, EvalHarness, EvalReport, compare_reports, get_suite, variant_configs
 from .llm import make_provider
@@ -37,6 +39,41 @@ def print_trace(store: Store, run_id: str) -> None:
     walk(None, 0)
 
 
+def _default_port() -> int:
+    """Hosts like Render and Hugging Face Spaces tell the app which port to bind through $PORT."""
+    try:
+        return int(os.environ.get("PORT") or 8765)
+    except ValueError:
+        return 8765
+
+
+def _serve(store, a) -> int:
+    from .dashboard import serve
+
+    def ready(url: str) -> None:
+        print(f"AgentLab dashboard: {url}  (Ctrl+C to stop)", file=sys.stderr)
+        if not a.no_open:
+            webbrowser.open(url)
+
+    serve(store, a.host, a.port, on_ready=ready)
+    return 0
+
+
+def _demo(a) -> int:
+    from .demo import is_empty, seed_demo
+
+    store = make_store(a.demo_db)
+    if is_empty(store):
+        print("Seeding demo data (offline, no API key needed)...", file=sys.stderr)
+        seed_demo(store, progress=lambda m: print("  " + m, file=sys.stderr))
+    else:
+        print("Demo data already present; delete the database file to reseed.", file=sys.stderr)
+    if a.seed_only:
+        store.close()
+        return 0
+    return _serve(store, a)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="agentlab")
     p.add_argument("--db", default="agentlab.db")
@@ -66,6 +103,17 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--baseline", help="JSON report to compare against (regression gate)")
     e.add_argument("--max-drop", type=float, default=0.05)
 
+    sv = sub.add_parser("serve", help="web dashboard for runs, traces and evals")
+    sv.add_argument("--host", default="127.0.0.1")
+    sv.add_argument("--port", type=int, default=_default_port(), help="default: $PORT or 8765")
+    sv.add_argument("--no-open", action="store_true", help="do not open a browser")
+    dm = sub.add_parser("demo", help="seed a demo database with offline runs and open the dashboard")
+    dm.add_argument("--demo-db", default="agentlab-demo.db", help="SQLite file for the demo data")
+    dm.add_argument("--host", default="127.0.0.1")
+    dm.add_argument("--port", type=int, default=_default_port(), help="default: $PORT or 8765")
+    dm.add_argument("--no-open", action="store_true")
+    dm.add_argument("--seed-only", action="store_true", help="create the demo data and exit (used by the Docker build)")
+
     sub.add_parser("eval-list", help="list saved eval runs")
     ec = sub.add_parser("eval-compare", help="diff two saved eval runs")
     ec.add_argument("eval_a")
@@ -80,7 +128,11 @@ def main(argv: list[str] | None = None) -> int:
     ts.add_parser("replay").add_argument("run_id")
 
     a = p.parse_args(argv)
+    if a.cmd == "demo":
+        return _demo(a)
     store = make_store(a.db)
+    if a.cmd == "serve":
+        return _serve(store, a)
 
     if a.cmd == "run":
         res = AgentRuntime(make_provider(a.provider), store=store, use_critic=not a.no_critic).run(a.task)

@@ -75,6 +75,39 @@ rt = AgentRuntime(make_provider("groq"), tools, SqliteStore("agentlab.db"))
 print(rt.run("Convert 250 USD to IDR").answer)
 ```
 
+## Dashboard
+
+```bash
+agentlab demo            # seeds an offline demo database (no API key) and opens the dashboard
+agentlab serve           # dashboard for your own database: --db agentlab.db, --port 8765
+```
+
+Runs with the standard library only (`pip install -e ".[dashboard]"` is accepted but pulls in nothing extra): a tiny
+read-only HTTP server, one static page, no build step, light and dark theme.
+
+| | |
+|---|---|
+| ![Run list](docs/img/runs-light.png) | ![Trace timeline](docs/img/trace-dark.png) |
+| **Runs**: status, tokens, latency and cost for every run | **Trace**: span timeline with the critic-triggered replan, per-span tokens, input and output |
+| ![Eval report](docs/img/eval-light.png) | ![Eval comparison](docs/img/compare-dark.png) |
+| **Eval**: success, cost, latency and tokens per config, per-task heatmap | **Compare**: two evals side by side, regressions called out |
+
+Deploy the demo on a free host with the included `Dockerfile` (see [docs/deploy.md](docs/deploy.md)). The dashboard has
+no authentication: keep real traces behind your host's access control.
+
+### Storage
+
+Everything goes through a small `Store` protocol. `SqliteStore` is the default; `SupabaseStore` keeps runs, spans,
+checkpoints and evals in Postgres through Supabase's REST API (stdlib only):
+
+```bash
+# once: run docs/supabase_schema.sql in the Supabase SQL editor, then
+export AGENTLAB_STORE=supabase SUPABASE_URL=https://<ref>.supabase.co SUPABASE_KEY=<service-role key>
+agentlab run "What is 6*7?"              # now traced into Postgres; `agentlab serve` reads it back
+```
+
+Both stores run the same contract tests (the Supabase one against an in-process PostgREST fake), so behaviour is identical.
+
 ## Evaluation
 
 Suites (`agentlab eval --suite <name>`), each with deterministic checks (numeric, regex, tool used / not used, ...):

@@ -8,3 +8,5 @@ report.md
 htmlcov/
 .ruff_cache/
 *.db-journal
+build/
+dist/
