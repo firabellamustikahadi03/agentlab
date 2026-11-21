@@ -11,7 +11,7 @@ from . import prompts
 from .jsonutil import extract_json
 from .llm.base import Message, Provider
 from .tools import ToolRegistry, default_registry
-from .tracing import SqliteStore, Tracer
+from .tracing import SqliteStore, Store, Tracer
 
 
 class BudgetExceeded(RuntimeError):
@@ -55,7 +55,7 @@ class AgentRuntime:
         self,
         provider: Provider,
         tools: ToolRegistry | None = None,
-        store: SqliteStore | None = None,
+        store: Store | None = None,
         budget: Budget | None = None,
         use_critic: bool = True,
         temperature: float = 0.0,

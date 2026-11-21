@@ -20,6 +20,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
+filterwarnings = [
+    "ignore::ResourceWarning",  # in-memory test stores are never closed explicitly
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.ruff]
 line-length = 120

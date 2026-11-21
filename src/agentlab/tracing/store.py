@@ -66,12 +66,18 @@ class SqliteStore:
                 v = json.dumps(v, default=str)
             self._exec(f"UPDATE runs SET {k}=? WHERE run_id=?", (v, run_id))
 
+    @staticmethod
+    def _run_dict(r: sqlite3.Row) -> dict:
+        d = dict(r)
+        d["meta"] = json.loads(d["meta"]) if d["meta"] else {}
+        return d
+
     def get_run(self, run_id: str) -> dict | None:
         r = self._exec("SELECT * FROM runs WHERE run_id=?", (run_id,))
-        return dict(r[0]) if r else None
+        return self._run_dict(r[0]) if r else None
 
     def list_runs(self, limit: int = 20) -> list[dict]:
-        return [dict(r) for r in self._exec("SELECT * FROM runs ORDER BY started DESC LIMIT ?", (limit,))]
+        return [self._run_dict(r) for r in self._exec("SELECT * FROM runs ORDER BY started DESC LIMIT ?", (limit,))]
 
     # spans --------------------------------------------------------------
     def save_span(self, s: dict) -> None:

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from ..llm.base import LLMResponse, Message, Usage
-from .store import SqliteStore
+from .base import Store
 
 
 class ReplayProvider:
@@ -13,7 +13,7 @@ class ReplayProvider:
     spending tokens or hitting rate limits. Divergence is detected and reported.
     """
 
-    def __init__(self, store: SqliteStore, run_id: str):
+    def __init__(self, store: Store, run_id: str):
         run = store.get_run(run_id)
         if not run:
             raise KeyError(f"run {run_id} not found")

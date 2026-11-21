@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Iterator
 from typing import Any
 
-from .store import SqliteStore
+from .base import Store
 
 
 class Span:
@@ -39,7 +39,7 @@ class Span:
 class Tracer:
     """One tracer per run. `kind` is one of: run, plan, step, llm, tool, critic."""
 
-    def __init__(self, store: SqliteStore, run_id: str, start_seq: int = 0):
+    def __init__(self, store: Store, run_id: str, start_seq: int = 0):
         self.store, self.run_id = store, run_id
         self._seq = itertools.count(start_seq)
         self._stack: list[Span] = []

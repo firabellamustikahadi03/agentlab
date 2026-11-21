@@ -9,7 +9,7 @@ import time
 from .eval import EvalConfig, EvalHarness, EvalReport, compare_reports, get_suite, variant_configs
 from .llm import make_provider
 from .runtime import AgentRuntime
-from .tracing import ReplayProvider, SqliteStore
+from .tracing import ReplayProvider, Store, make_store
 
 
 def _fmt_span(s: dict, depth: int) -> str:
@@ -23,7 +23,7 @@ def _fmt_span(s: dict, depth: int) -> str:
     return f"{'  ' * depth}{mark} {s['kind']}:{s['name'][:40]} {dur:.0f}ms{extra}  {body}"
 
 
-def print_trace(store: SqliteStore, run_id: str) -> None:
+def print_trace(store: Store, run_id: str) -> None:
     spans = store.get_spans(run_id)
     kids: dict = {}
     for s in spans:
@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     ts.add_parser("replay").add_argument("run_id")
 
     a = p.parse_args(argv)
-    store = SqliteStore(a.db)
+    store = make_store(a.db)
 
     if a.cmd == "run":
         res = AgentRuntime(make_provider(a.provider), store=store, use_critic=not a.no_critic).run(a.task)

@@ -19,7 +19,7 @@ from ..llm.throttle import RateLimiter, ThrottledProvider
 from ..prompts import PROMPT_SETS, PromptSet
 from ..runtime import AgentRuntime, Budget
 from ..tools import ToolRegistry, default_registry
-from ..tracing import SqliteStore
+from ..tracing import SqliteStore, Store
 from .scorers import score
 from .suites import EvalTask
 
@@ -65,7 +65,7 @@ class EvalReport:
     rows: list[dict]
 
     @classmethod
-    def from_store(cls, store: SqliteStore, eval_id: str) -> EvalReport:
+    def from_store(cls, store: Store, eval_id: str) -> EvalReport:
         if store.get_eval(eval_id) is None:
             raise KeyError(f"eval {eval_id} not found")
         return cls(eval_id, store.get_eval_rows(eval_id))
@@ -170,7 +170,7 @@ class EvalReport:
 
 class EvalHarness:
     def __init__(
-        self, store: SqliteStore | None = None, tools: ToolRegistry | None = None, judge: Provider | None = None
+        self, store: Store | None = None, tools: ToolRegistry | None = None, judge: Provider | None = None
     ):
         self.store = store or SqliteStore(":memory:")
         self.tools = tools or default_registry()
