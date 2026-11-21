@@ -16,7 +16,10 @@ _BIN = {
     ast.FloorDiv: op.floordiv, ast.Mod: op.mod, ast.Pow: op.pow,
 }
 _UN = {ast.UAdd: op.pos, ast.USub: op.neg}
-_FUNCS = {"sqrt": math.sqrt, "abs": abs, "round": round, "min": min, "max": max, "log": math.log, "sin": math.sin, "cos": math.cos}
+_FUNCS = {
+    "sqrt": math.sqrt, "abs": abs, "round": round, "min": min, "max": max,
+    "log": math.log, "sin": math.sin, "cos": math.cos,
+}
 _CONSTS = {"pi": math.pi, "e": math.e}
 
 
@@ -26,10 +29,10 @@ def safe_eval(expr: str) -> float:
         if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
             return n.value
         if isinstance(n, ast.BinOp) and type(n.op) in _BIN:
-            l, r = ev(n.left), ev(n.right)
-            if isinstance(n.op, ast.Pow) and abs(r) > 1000:
+            lhs, rhs = ev(n.left), ev(n.right)
+            if isinstance(n.op, ast.Pow) and abs(rhs) > 1000:
                 raise ValueError("exponent too large")
-            return _BIN[type(n.op)](l, r)
+            return _BIN[type(n.op)](lhs, rhs)
         if isinstance(n, ast.UnaryOp) and type(n.op) in _UN:
             return _UN[type(n.op)](ev(n.operand))
         if isinstance(n, ast.Name) and n.id in _CONSTS:
@@ -60,7 +63,7 @@ def run_python(code: str, timeout_s: float = 8.0) -> str:
                 preexec_fn=_limits if os.name == "posix" else None,
             )
         except subprocess.TimeoutExpired:
-            raise TimeoutError(f"python exceeded {timeout_s}s")
+            raise TimeoutError(f"python exceeded {timeout_s}s") from None
     out = (p.stdout or "").strip()
     if p.returncode != 0:
         raise RuntimeError((p.stderr or "").strip().splitlines()[-1] if p.stderr else f"exit {p.returncode}")

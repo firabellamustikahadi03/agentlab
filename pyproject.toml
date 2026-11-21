@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 dependencies = []  # stdlib only on purpose
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+dev = ["pytest>=7", "pytest-cov>=4", "ruff>=0.5"]
 
 [project.scripts]
 agentlab = "agentlab.cli:main"
@@ -20,3 +20,21 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B017"]
+
+[tool.coverage.run]
+source = ["agentlab"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true

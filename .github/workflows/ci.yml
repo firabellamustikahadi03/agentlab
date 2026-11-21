@@ -10,5 +10,6 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "${{ matrix.python }}" }
       - run: pip install -e ".[dev]"
-      - run: pytest -q
+      - run: ruff check .
+      - run: pytest -q --cov=agentlab --cov-fail-under=85
       - run: agentlab eval --suite basic --providers mock

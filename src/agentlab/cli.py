@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 
 from .eval import EvalConfig, EvalHarness, get_suite
 from .llm import make_provider

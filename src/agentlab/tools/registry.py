@@ -4,8 +4,9 @@ from __future__ import annotations
 import inspect
 import json
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, get_type_hints
+from typing import Any, get_type_hints
 
 _JSON_TYPES = {str: "string", int: "integer", float: "number", bool: "boolean", list: "array", dict: "object"}
 
@@ -94,7 +95,7 @@ class ToolRegistry:
     def describe(self) -> str:
         return "\n".join(t.spec() for t in self._tools.values()) or "(no tools)"
 
-    def subset(self, names: list[str]) -> "ToolRegistry":
+    def subset(self, names: list[str]) -> ToolRegistry:
         r = ToolRegistry()
         for n in names:
             if n in self._tools:

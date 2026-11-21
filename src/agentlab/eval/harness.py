@@ -4,9 +4,9 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from statistics import mean
-from typing import Callable
 
 from ..llm.base import Provider
 from ..runtime import AgentRuntime, Budget
@@ -60,7 +60,10 @@ class EvalReport:
     def to_markdown(self) -> str:
         s, cfgs = self.summary(), self.configs()
         lines = [f"# Eval `{self.eval_id}`", "", "## Summary", ""]
-        lines.append("| config | runs | success | avg tokens | avg latency (s) | cost ($) | llm calls | tool err | replan | agent fail |")
+        lines.append(
+            "| config | runs | success | avg tokens | avg latency (s) | cost ($) "
+            "| llm calls | tool err | replan | agent fail |"
+        )
         lines.append("|---|---|---|---|---|---|---|---|---|---|")
         for c in cfgs:
             x = s[c]
@@ -69,13 +72,17 @@ class EvalReport:
                 f"| {x['total_cost_usd']:.4f} | {x['avg_llm_calls']:.1f} | {x['tool_error_rate']:.0%} "
                 f"| {x['replan_rate']:.0%} | {x['agent_failures']} |"
             )
-        lines += ["", "## Per task (passed/trials)", "", "| task | " + " | ".join(cfgs) + " |", "|---|" + "---|" * len(cfgs)]
+        lines += [
+            "", "## Per task (passed/trials)", "",
+            "| task | " + " | ".join(cfgs) + " |", "|---|" + "---|" * len(cfgs),
+        ]
         for t, row in self.task_matrix().items():
             lines.append(f"| {t} | " + " | ".join(row.get(c, "-") for c in cfgs) + " |")
         return "\n".join(lines) + "\n"
 
     def to_json(self) -> str:
-        return json.dumps({"eval_id": self.eval_id, "summary": self.summary(), "rows": self.rows}, indent=2, default=str)
+        payload = {"eval_id": self.eval_id, "summary": self.summary(), "rows": self.rows}
+        return json.dumps(payload, indent=2, default=str)
 
     def regressions(self, baseline: dict, max_drop: float = 0.05) -> list[str]:
         """Compare against a saved report's summary; flag configs whose success rate dropped."""

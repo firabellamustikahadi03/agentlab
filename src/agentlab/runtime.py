@@ -216,7 +216,10 @@ class AgentRuntime:
         for _ in range(self.budget.max_tool_iters):
             obj = self._llm_json(tr, "executor", msgs)
             if obj is None:
-                msgs += [Message("assistant", "(invalid)"), Message("user", "OBSERVATION: invalid reply, send valid JSON.")]
+                msgs += [
+                    Message("assistant", "(invalid)"),
+                    Message("user", "OBSERVATION: invalid reply, send valid JSON."),
+                ]
                 continue
             if "final" in obj:
                 return str(obj["final"])
@@ -225,7 +228,10 @@ class AgentRuntime:
                 obs = self._call_tool(tr, str(act["tool"]), act.get("args") or {})
                 msgs += [Message("assistant", _dump(obj)), Message("user", f"OBSERVATION: {obs}")]
             else:
-                msgs += [Message("assistant", _dump(obj)), Message("user", "OBSERVATION: need an action or a final key.")]
+                msgs += [
+                    Message("assistant", _dump(obj)),
+                    Message("user", "OBSERVATION: need an action or a final key."),
+                ]
         return "(step incomplete: tool iteration limit reached)"
 
     def _call_tool(self, tr: Tracer, name: str, args: dict) -> str:

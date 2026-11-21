@@ -4,3 +4,7 @@ __pycache__/
 .pytest_cache/
 .env
 report.md
+.coverage
+htmlcov/
+.ruff_cache/
+*.db-journal

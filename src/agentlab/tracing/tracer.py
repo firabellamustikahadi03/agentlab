@@ -5,13 +5,14 @@ import contextlib
 import itertools
 import time
 import uuid
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from .store import SqliteStore
 
 
 class Span:
-    def __init__(self, tracer: "Tracer", kind: str, name: str, input: Any, parent_id: str | None):
+    def __init__(self, tracer: Tracer, kind: str, name: str, input: Any, parent_id: str | None):
         self.tracer = tracer
         self.d = {
             "span_id": uuid.uuid4().hex[:12], "run_id": tracer.run_id, "parent_id": parent_id,
