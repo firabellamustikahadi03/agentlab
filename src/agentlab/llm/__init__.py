@@ -1,6 +1,7 @@
 from .base import LLMResponse, Message, Provider, ProviderError, Usage, estimate_tokens
 from .mock import MockAgentProvider, ScriptedProvider
 from .openai_compat import PRESETS, OpenAICompatProvider
+from .throttle import RateLimiter, ThrottledProvider
 
 
 def make_provider(spec: str):
@@ -20,4 +21,5 @@ def make_provider(spec: str):
 __all__ = [
     "LLMResponse", "Message", "Provider", "ProviderError", "Usage", "estimate_tokens",
     "MockAgentProvider", "ScriptedProvider", "OpenAICompatProvider", "PRESETS", "make_provider",
+    "RateLimiter", "ThrottledProvider",
 ]

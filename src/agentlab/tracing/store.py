@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from typing import Any
 
 SCHEMA = """
@@ -19,11 +20,17 @@ CREATE INDEX IF NOT EXISTS idx_spans_run ON spans(run_id, seq);
 CREATE TABLE IF NOT EXISTS checkpoints(
   run_id TEXT, seq INTEGER, state TEXT, PRIMARY KEY(run_id, seq)
 );
+CREATE TABLE IF NOT EXISTS eval_runs(
+  eval_id TEXT PRIMARY KEY, created REAL, suite TEXT, meta TEXT
+);
 CREATE TABLE IF NOT EXISTS eval_results(
   eval_id TEXT, config TEXT, task_id TEXT, trial INTEGER, run_id TEXT, passed INTEGER,
-  score REAL, metrics TEXT, detail TEXT
+  score REAL, metrics TEXT, detail TEXT, status TEXT, answer TEXT
 );
 """
+
+# columns added after the first release: applied to databases created by older versions
+_MIGRATIONS = {"eval_results": [("status", "TEXT"), ("answer", "TEXT")]}
 
 
 class SqliteStore:
@@ -34,6 +41,15 @@ class SqliteStore:
         self._db.row_factory = sqlite3.Row
         with self._lock:
             self._db.executescript(SCHEMA)
+            self._migrate()
+
+    def _migrate(self) -> None:
+        for table, cols in _MIGRATIONS.items():
+            have = {r["name"] for r in self._db.execute(f"PRAGMA table_info({table})")}
+            for name, typ in cols:
+                if name not in have:
+                    self._db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
+        self._db.commit()
 
     def _exec(self, sql: str, params: tuple = ()) -> list[sqlite3.Row]:
         with self._lock:
@@ -86,11 +102,51 @@ class SqliteStore:
         return json.loads(r[0]["state"]) if r else None
 
     # eval ---------------------------------------------------------------
-    def save_eval_result(self, eval_id, config, task_id, trial, run_id, passed, score, metrics, detail) -> None:
+    def save_eval_run(self, eval_id: str, suite: str = "", meta: dict | None = None) -> None:
         self._exec(
-            "INSERT INTO eval_results VALUES(?,?,?,?,?,?,?,?,?)",
-            (eval_id, config, task_id, trial, run_id, int(passed), score, json.dumps(metrics), detail),
+            "INSERT OR REPLACE INTO eval_runs VALUES(?,?,?,?)",
+            (eval_id, time.time(), suite, json.dumps(meta or {}, default=str)),
         )
+
+    def save_eval_result(
+        self, eval_id, config, task_id, trial, run_id, passed, score, metrics, detail, status="", answer=None
+    ) -> None:
+        self._exec(
+            "INSERT INTO eval_results VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (eval_id, config, task_id, trial, run_id, int(passed), score, json.dumps(metrics), detail, status, answer),
+        )
+
+    def list_evals(self, limit: int = 20) -> list[dict]:
+        rows = self._exec(
+            "SELECT e.eval_id, e.created, e.suite, e.meta, COUNT(r.eval_id) AS n, AVG(r.passed) AS success "
+            "FROM eval_runs e LEFT JOIN eval_results r ON r.eval_id = e.eval_id "
+            "GROUP BY e.eval_id ORDER BY e.created DESC LIMIT ?",
+            (limit,),
+        )
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["meta"] = json.loads(d["meta"]) if d["meta"] else {}
+            out.append(d)
+        return out
+
+    def get_eval(self, eval_id: str) -> dict | None:
+        r = self._exec("SELECT * FROM eval_runs WHERE eval_id=?", (eval_id,))
+        if not r:
+            return None
+        d = dict(r[0])
+        d["meta"] = json.loads(d["meta"]) if d["meta"] else {}
+        return d
+
+    def get_eval_rows(self, eval_id: str) -> list[dict]:
+        out = []
+        for r in self._exec("SELECT rowid, * FROM eval_results WHERE eval_id=? ORDER BY rowid", (eval_id,)):
+            d = dict(r)
+            d.pop("rowid")
+            d["metrics"] = json.loads(d["metrics"]) if d["metrics"] else {}
+            d["status"] = d["status"] or ""
+            out.append(d)
+        return out
 
     def close(self) -> None:
         with self._lock:

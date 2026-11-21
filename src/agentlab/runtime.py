@@ -59,6 +59,7 @@ class AgentRuntime:
         budget: Budget | None = None,
         use_critic: bool = True,
         temperature: float = 0.0,
+        prompt_set: prompts.PromptSet | None = None,
     ):
         self.provider = provider
         self.tools = tools or default_registry()
@@ -66,6 +67,7 @@ class AgentRuntime:
         self.budget = budget or Budget()
         self.use_critic = use_critic
         self.temperature = temperature
+        self.prompts = prompt_set or prompts.DEFAULT
 
     # public API ---------------------------------------------------------
     def run(self, task: str, run_id: str | None = None) -> RunResult:
@@ -196,7 +198,7 @@ class AgentRuntime:
                 user += f"\nPREVIOUS ATTEMPT FAILED, CRITIC SAID: {feedback}\nMake a better plan."
             obj = self._llm_json(
                 tr, "planner",
-                [Message("system", prompts.PLANNER.format(tools=self.tools.describe())), Message("user", user)],
+                [Message("system", self.prompts.planner.format(tools=self.tools.describe())), Message("user", user)],
             )
             steps = [str(s) for s in (obj or {}).get("steps", []) if str(s).strip()][:6]
             if not steps:  # planner failed: degrade gracefully to a single-step plan
@@ -212,7 +214,7 @@ class AgentRuntime:
             + f"\nCURRENT STEP: {i + 1}. {state['plan'][i]}"
             + (f"\nPREVIOUS RESULTS:\n{done}" if done else "")
         )
-        msgs = [Message("system", prompts.EXECUTOR.format(tools=self.tools.describe())), Message("user", user)]
+        msgs = [Message("system", self.prompts.executor.format(tools=self.tools.describe())), Message("user", user)]
         for _ in range(self.budget.max_tool_iters):
             obj = self._llm_json(tr, "executor", msgs)
             if obj is None:
@@ -256,7 +258,7 @@ class AgentRuntime:
         with tr.span("critic", "critic", {"answer": answer}) as sp:
             obj = self._llm_json(
                 tr, "critic",
-                [Message("system", prompts.CRITIC), Message("user", f"TASK: {task}\nANSWER: {answer}")],
+                [Message("system", self.prompts.critic), Message("user", f"TASK: {task}\nANSWER: {answer}")],
             )
             if obj is None or "pass" not in obj:  # unparseable critic must not block a result
                 v = {"pass": True, "issues": "critic unavailable"}

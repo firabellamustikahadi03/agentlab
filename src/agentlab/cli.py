@@ -1,11 +1,12 @@
-"""agentlab CLI: run | resume | eval | traces list|show|replay"""
+"""agentlab CLI: run | resume | eval | eval-list | eval-compare | traces list|show|replay"""
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+import time
 
-from .eval import EvalConfig, EvalHarness, get_suite
+from .eval import EvalConfig, EvalHarness, EvalReport, compare_reports, get_suite, variant_configs
 from .llm import make_provider
 from .runtime import AgentRuntime
 from .tracing import ReplayProvider, SqliteStore
@@ -55,10 +56,22 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--providers", nargs="+", default=["mock"])
     e.add_argument("--trials", type=int, default=1)
     e.add_argument("--sleep", type=float, default=0.0, help="seconds between runs (free-tier rate limits)")
+    e.add_argument("--workers", type=int, default=1, help="run eval jobs in parallel on N threads")
+    e.add_argument("--rpm", type=float, help="max LLM requests per minute, enforced per provider config")
+    e.add_argument("--variants", nargs="+", default=["default"],
+                   help="prompt/critic variants: default no-critic concise careful (join with +)")
+    e.add_argument("--judge", help="provider spec used by judge-scored checks, e.g. groq or mock")
     e.add_argument("--out", help="write markdown report here")
     e.add_argument("--json", help="write JSON report here")
     e.add_argument("--baseline", help="JSON report to compare against (regression gate)")
     e.add_argument("--max-drop", type=float, default=0.05)
+
+    sub.add_parser("eval-list", help="list saved eval runs")
+    ec = sub.add_parser("eval-compare", help="diff two saved eval runs")
+    ec.add_argument("eval_a")
+    ec.add_argument("eval_b")
+    ec.add_argument("--max-drop", type=float, default=0.05)
+    ec.add_argument("--fail-on-regression", action="store_true", help="exit 2 if B is worse than A")
 
     t = sub.add_parser("traces", help="inspect traces")
     ts = t.add_subparsers(dest="tcmd", required=True)
@@ -81,9 +94,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if res.ok else 1
 
     if a.cmd == "eval":
-        cfgs = [EvalConfig(spec, (lambda s=spec: make_provider(s))) for spec in a.providers]
-        rep = EvalHarness(store).run(
-            get_suite(a.suite), cfgs, a.trials, a.sleep, progress=lambda m: print(m, file=sys.stderr)
+        cfgs = []
+        for spec in a.providers:
+            cfgs += variant_configs(EvalConfig(spec, (lambda s=spec: make_provider(s))), a.variants)
+        judge = make_provider(a.judge) if a.judge else None
+        rep = EvalHarness(store, judge=judge).run(
+            get_suite(a.suite), cfgs, a.trials, a.sleep, progress=lambda m: print(m, file=sys.stderr),
+            workers=a.workers, rpm=a.rpm, suite=a.suite,
         )
         print(rep.to_markdown())
         if a.out:
@@ -94,6 +111,30 @@ def main(argv: list[str] | None = None) -> int:
             bad = rep.regressions(json.load(open(a.baseline)), a.max_drop)
             if bad:
                 print("REGRESSIONS:\n  " + "\n  ".join(bad), file=sys.stderr)
+                return 2
+        return 0
+
+    if a.cmd == "eval-list":
+        for ev in store.list_evals():
+            when = time.strftime("%Y-%m-%d %H:%M", time.localtime(ev["created"]))
+            ok = f"{ev['success']:.0%}" if ev["success"] is not None else "-"
+            print(f"{ev['eval_id']}  {when}  {ev['suite'] or '-':<14} runs={ev['n']:<4} success={ok:<5}"
+                  f" {','.join(ev['meta'].get('configs', []))}")
+        return 0
+
+    if a.cmd == "eval-compare":
+        try:
+            cmp = compare_reports(EvalReport.from_store(store, a.eval_a), EvalReport.from_store(store, a.eval_b))
+        except KeyError as e:
+            print(f"error: {e.args[0]}", file=sys.stderr)
+            return 1
+        print(cmp.to_markdown())
+        bad = cmp.regressions(a.max_drop)
+        if bad:
+            print("REGRESSIONS:", file=sys.stderr)
+            for line in bad:
+                print("  " + line, file=sys.stderr)
+            if a.fail_on_regression:
                 return 2
         return 0
 

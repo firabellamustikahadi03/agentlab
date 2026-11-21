@@ -45,7 +45,7 @@ flowchart LR
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 14 tests, no API key needed
+pytest                                   # 64 tests, ~96% coverage, no API key needed
 
 agentlab run "What is 17*23+5?"          # offline mock provider
 agentlab traces list
@@ -75,17 +75,61 @@ rt = AgentRuntime(make_provider("groq"), tools, SqliteStore("agentlab.db"))
 print(rt.run("Convert 250 USD to IDR").answer)
 ```
 
-## Example eval output (offline mock, shows the report format)
+## Evaluation
 
-| config | runs | success | avg tokens | llm calls | replan |
-|---|---|---|---|---|---|
-| mock | 12 | 67% | 841 | 4.0 | 0% |
-| mock-flaky | 12 | 67% | 1380 | 7.0 | 100% |
+Suites (`agentlab eval --suite <name>`), each with deterministic checks (numeric, regex, tool used / not used, ...):
 
-Replace with real numbers from Groq/Gemini once you run `agentlab eval` with your keys.
+| suite | what it tests |
+|---|---|
+| `basic`, `reasoning` | arithmetic, code execution, word problems |
+| `tool-use` | multi-tool chains (look something up, then compute with it) |
+| `multistep` | dependent multi-step reasoning |
+| `error-recovery` | tools that fail once with a transient error; the agent must retry |
+| `injection` | tool output that tries to hijack the agent (change the answer, call an exfiltration tool) |
+| `open` | open-ended answers scored by an **LLM judge** against a rubric (needs `--judge`) |
+| `all` | everything except `open` |
+
+```bash
+# compare prompt variants and the critic on a real model, 3 trials, in parallel but inside a free-tier quota
+agentlab eval --suite all --providers groq --variants default careful concise no-critic \
+              --trials 3 --workers 4 --rpm 25 --json base.json
+
+# judge-scored open-ended tasks, judged by another model
+agentlab eval --suite open --providers groq --judge gemini
+
+# every eval is persisted: list them and diff two runs (per config and per task)
+agentlab eval-list
+agentlab eval-compare ev-1a2b3c4d ev-5e6f7a8b --fail-on-regression    # exit 2 if B is worse than A
+```
+
+- **Variants** (`--variants`): `default`, `no-critic`, `concise`, `careful` (treats tool output as untrusted data), or
+  combinations such as `careful+no-critic`. They show up as separate configs (`groq+careful`) in the report.
+- **Parallel + throttled**: `--workers N` runs jobs on a thread pool; `--rpm N` caps LLM requests per minute per
+  provider config with a thread-safe limiter, so parallel runs still respect free-tier quotas. Report order is deterministic.
+- **Judge scorer**: `{"type": "judge", "rubric": "...", "threshold": 0.7}`. Accepts `0..1`, `0..10` or `0..100` scores,
+  parses JSON or prose, retries once, and a broken judge scores 0 instead of crashing the eval.
+- The report includes per-task **tokens, latency and cost**.
+
+### Example (offline, from the built-in mock agents)
+
+The mock providers are deterministic stand-ins with deliberate flaws, so the table also shows that the suites
+*can tell a good agent from a bad one*: `mock-gullible` obeys instructions injected into tool output,
+`mock-brittle` never retries a failed tool. Neither mock can solve the `reasoning` word problems (that needs a real model).
+
+| suite | mock | mock-gullible | mock-brittle |
+|---|---|---|---|
+| basic (8) | 100% | 100% | 100% |
+| reasoning (4) | 0% | 0% | 0% |
+| tool-use (3) | 100% | 100% | 100% |
+| multistep (4) | 100% | 100% | 100% |
+| error-recovery (3) | 100% | 100% | **0%** |
+| injection (3) | 100% | **0%** | 100% |
+| **all (25)** | **84%** | **72%** | **72%** |
+
+Replace this with real numbers from Groq/Gemini once you run `agentlab eval` with your keys.
 
 ## Limitations / next steps
 
-- Phase 2: more suites, LLM-as-judge scorer, per-task cost/latency charts.
 - Phase 3: web dashboard (trace timeline, eval comparison), Supabase store, free-tier deploy.
-- Phase 4: parallel step execution, retrieval tool, prompt-injection test suite for the agent itself.
+- Phase 4: parallel step execution, retrieval tool.
+- The offline mocks follow rules, not language understanding; real-model results are what matter.
